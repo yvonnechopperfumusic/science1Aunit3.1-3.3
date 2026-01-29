@@ -1,0 +1,659 @@
+import React, { useState, useEffect } from 'react';
+import { Trophy, XCircle, CheckCircle, RefreshCcw, BookOpen, ArrowRight, Play, User } from 'lucide-react';
+
+const QuizApp = () => {
+  // 60 Questions based on the uploaded PDFs (Vital functions, Classification, Keys)
+  // Moved outside of the render cycle or wrapped in memo usually, but for this file size keeping here is fine.
+  const allQuestionsSource = [
+    {
+      id: 1,
+      question: "下列哪一項不是生物的七大生命活動(Vital functions)之一？",
+      options: ["呼吸 (Respiration)", "光合作用 (Photosynthesis)", "排泄 (Excretion)", "生殖 (Reproduction)"],
+      answer: "光合作用 (Photosynthesis)",
+      explanation: "光合作用是植物製造食物的方法，屬於「營養」的一種，但不是所有生物都會進行（例如動物）。七大生命活動包括：營養、呼吸、排泄、生長、感應、運動、生殖。"
+    },
+    {
+      id: 2,
+      question: "生物會對環境中的變化（刺激）作出反應，這屬於哪種生命活動？",
+      options: ["運動 (Movement)", "感應 (Sensitivity)", "生長 (Growth)", "呼吸 (Respiration)"],
+      answer: "感應 (Sensitivity)",
+      explanation: "感應是指生物探測環境變化（刺激）並作出反應的能力。"
+    },
+    {
+      id: 3,
+      question: "下列關於「排泄」(Excretion) 的描述，哪項是正確的？",
+      options: ["排出身體不需要的廢物", "排出未經消化的食物殘渣", "只是指排尿", "只有動物會排泄，植物不會"],
+      answer: "排出身體不需要的廢物",
+      explanation: "排泄是指將代謝廢物（如二氧化碳、尿素）排出體外的過程。排出糞便屬於排遺 (Egestion)。"
+    },
+    {
+      id: 4,
+      question: "科學家主要根據甚麼特徵將動物分為脊椎動物和無脊椎動物？",
+      options: ["有沒有腳", "有沒有脊柱 (Backbone)", "生活在陸地還是水中", "體型大小"],
+      answer: "有沒有脊柱 (Backbone)",
+      explanation: "脊椎動物體內有脊柱，無脊椎動物則沒有。"
+    },
+    {
+      id: 5,
+      question: "下列哪一類脊椎動物的體溫會隨環境溫度改變（變溫動物 / Poikilotherms）？",
+      options: ["哺乳類 (Mammals)", "鳥類 (Birds)", "爬行類 (Reptiles)", "以上皆非"],
+      answer: "爬行類 (Reptiles)",
+      explanation: "魚類、兩棲類和爬行類都是變溫動物；哺乳類和鳥類則是恆溫動物。"
+    },
+    {
+      id: 6,
+      question: "下列哪項是哺乳類動物(Mammals)的獨有特徵？",
+      options: ["用肺呼吸", "體內受精", "具有乳腺，能分泌乳汁哺育幼兒", "有四肢"],
+      answer: "具有乳腺，能分泌乳汁哺育幼兒",
+      explanation: "所有哺乳類動物都有乳腺（Mammary glands）和毛髮（Hair/Fur），這是牠們的獨有特徵。"
+    },
+    {
+      id: 7,
+      question: "鳥類(Birds)的身體表面覆蓋著甚麼？",
+      options: ["毛髮 (Hair)", "羽毛 (Feathers)", "乾的鱗片 (Dry scales)", "濕潤的皮膚 (Moist skin)"],
+      answer: "羽毛 (Feathers)",
+      explanation: "鳥類身體覆蓋羽毛，有助飛行和保溫。"
+    },
+    {
+      id: 8,
+      question: "兩棲類(Amphibians)（如青蛙）的皮膚有什麼特點？",
+      options: ["有乾的鱗片", "有羽毛", "裸露且濕潤", "有毛髮"],
+      answer: "裸露且濕潤",
+      explanation: "兩棲類皮膚裸露、濕潤，能輔助呼吸。"
+    },
+    {
+      id: 9,
+      question: "下列哪種動物屬於爬行類(Reptiles)？",
+      options: ["蠑螈", "海龜", "鯨魚", "企鵝"],
+      answer: "海龜",
+      explanation: "海龜有乾的鱗片，產有硬殼的卵，屬於爬行類。蠑螈是兩棲類，鯨魚是哺乳類，企鵝是鳥類。"
+    },
+    {
+      id: 10,
+      question: "魚類通常用甚麼器官在水中呼吸？",
+      options: ["肺 (Lungs)", "鰓 (Gills)", "皮膚 (Skin)", "氣孔"],
+      answer: "鰓 (Gills)",
+      explanation: "魚類利用鰓從水中吸收溶解的氧氣。"
+    },
+    {
+      id: 11,
+      question: "蝙蝠會飛，但牠屬於哺乳類而不是鳥類，因為：",
+      options: ["牠吃昆蟲", "牠在夜間活動", "牠有毛髮並會餵哺母乳", "牠沒有牙齒"],
+      answer: "牠有毛髮並會餵哺母乳",
+      explanation: "蝙蝠具備哺乳類特徵（毛髮、乳腺），而不是鳥類的特徵（羽毛）。"
+    },
+    {
+      id: 12,
+      question: "鯨魚和海豚生活在水中，但牠們不屬於魚類，而是：",
+      options: ["兩棲類", "爬行類", "哺乳類", "大型魚類"],
+      answer: "哺乳類",
+      explanation: "牠們用肺呼吸，胎生，並會哺乳，因此是水生哺乳類。"
+    },
+    {
+      id: 13,
+      question: "植物界主要可分為哪兩大類？",
+      options: ["有花植物和無花植物", "水生植物和陸生植物", "喬木和灌木", "食用植物和藥用植物"],
+      answer: "有花植物和無花植物",
+      explanation: "根據是否會開花，植物主要分為有花植物 (Flowering plants) 和無花植物 (Non-flowering plants)。"
+    },
+    {
+      id: 14,
+      question: "下列關於「有花植物」的敘述，哪項是錯誤的？",
+      options: ["一定會產生種子", "一定有維管組織", "有些花朵很細小，不明顯", "只會生長在陸地上"],
+      answer: "只會生長在陸地上",
+      explanation: "有花植物也可生長在水中（如睡蓮）。"
+    },
+    {
+      id: 15,
+      question: "下列哪種植物是無花植物？",
+      options: ["玫瑰", "蕨 (Fern)", "百合", "蘋果樹"],
+      answer: "蕨 (Fern)",
+      explanation: "蕨類不會開花，利用孢子 (Spores) 繁殖。"
+    },
+    {
+      id: 16,
+      question: "蘚 (Moss) 和 蕨 (Fern) 的共同特點是甚麼？",
+      options: ["都會開花", "都有種子", "都不會產生種子，用孢子繁殖", "都有維管組織"],
+      answer: "都不會產生種子，用孢子繁殖",
+      explanation: "蘚和蕨都是無花植物，不產生種子，利用孢子繁殖。注意：蘚沒有維管組織，蕨有。"
+    },
+    {
+      id: 17,
+      question: "松樹 (Pine) 屬於無花植物中的哪一類？",
+      options: ["裸子植物 (Gymnosperms)", "被子植物", "蘚類", "蕨類"],
+      answer: "裸子植物 (Gymnosperms)",
+      explanation: "松樹是裸子植物，種子裸露在球果 (Cones) 內，不會開花結果。"
+    },
+    {
+      id: 18,
+      question: "甚麼是「維管組織」(Vascular tissues) 的主要功能？",
+      options: ["進行光合作用", "輸送水分和養分", "吸引昆蟲", "保護植物"],
+      answer: "輸送水分和養分",
+      explanation: "維管組織像管道一樣，負責在植物體內輸送水分、礦物質和養分。"
+    },
+    {
+      id: 19,
+      question: "以下哪種植物「沒有」維管組織？",
+      options: ["蘋果樹", "松樹", "蕨", "蘚 (Moss)"],
+      answer: "蘚 (Moss)",
+      explanation: "蘚類植物結構簡單，沒有維管組織，因此通常長得矮小並生活在潮濕環境。"
+    },
+    {
+      id: 20,
+      question: "生物學家用甚麼工具來辨認生物的身份？",
+      options: ["顯微鏡", "溫度計", "檢索表 (Key)", "量筒"],
+      answer: "檢索表 (Key)",
+      explanation: "檢索表（如二歧式檢索表）是利用生物的特徵來辨認生物的工具。"
+    },
+    {
+      id: 21,
+      question: "在使用二歧式檢索表 (Dichotomous key) 時，每個步驟通常有多少個選擇？",
+      options: ["1個", "2個", "3個", "4個"],
+      answer: "2個",
+      explanation: "「二歧」的意思就是分成兩支，每次提供兩個相反的特徵供選擇。"
+    },
+    {
+      id: 22,
+      question: "下列哪項特徵最適合用於檢索表來分辨生物？",
+      options: ["生物的名字", "生物的喜好", "可觀察到的身體特徵（如：有翅膀 / 無翅膀）", "生物的年齡"],
+      answer: "可觀察到的身體特徵（如：有翅膀 / 無翅膀）",
+      explanation: "檢索表應基於客觀、可觀察的身體特徵(Physical features)來分類。"
+    },
+    {
+      id: 23,
+      question: "下列哪種動物是恆溫動物 (Homoiotherms)？",
+      options: ["金魚", "蜥蜴", "麻雀", "青蛙"],
+      answer: "麻雀",
+      explanation: "麻雀是鳥類，鳥類和哺乳類是恆溫動物。"
+    },
+    {
+      id: 24,
+      question: "「種子植物」包括哪兩類？",
+      options: ["蘚和蕨", "有花植物和針葉樹(裸子植物)", "藻類和菌類", "脊椎和無脊椎"],
+      answer: "有花植物和針葉樹(裸子植物)",
+      explanation: "這兩類植物都會產生種子來繁殖。"
+    },
+    {
+      id: 25,
+      question: "下列關於「生長」(Growth) 的定義，哪項最準確？",
+      options: ["身體體積增大和複雜程度增加", "只是體重增加", "只是變高", "進食更多食物"],
+      answer: "身體體積增大和複雜程度增加",
+      explanation: "生長不僅是變大，還涉及細胞分裂和身體結構發展，通常是不可逆的。"
+    },
+    {
+      id: 26,
+      question: "哪一項是兩棲類動物繁殖的特徵？",
+      options: ["產下有硬殼的卵", "產下無殼的卵（通常在水中）", "胎生", "種子繁殖"],
+      answer: "產下無殼的卵（通常在水中）",
+      explanation: "兩棲類的卵沒有硬殼保護，容易乾涸，因此通常產於水中或潮濕處。"
+    },
+    {
+      id: 27,
+      question: "如果一種植物有維管組織，會產生種子，而且種子藏在果實內，它是？",
+      options: ["有花植物", "針葉樹 (Conifers)", "蕨類", "蘚類"],
+      answer: "有花植物",
+      explanation: "有花植物開花後會結出果實，種子被包裹在果實內。"
+    },
+    {
+      id: 28,
+      question: "下列哪項不是生物分類的主要層級(Kingdoms)之一？（以中一程度為準）",
+      options: ["動物界", "植物界", "機械界", "以上皆是"],
+      answer: "機械界",
+      explanation: "生物主要分為動物界、植物界等，非生物（如機械）不屬於生物分類系統。"
+    },
+    {
+      id: 29,
+      question: "為什麼我們要對生物進行分類？",
+      options: ["為了讓生物變得更好看", "為了方便辨認和研究生物", "為了控制生物的數量", "為了改變生物的習性"],
+      answer: "為了方便辨認和研究生物",
+      explanation: "分類能讓我們有系統地整理生物資訊，更容易辨認物種和了解牠們的關係。"
+    },
+    {
+      id: 30,
+      question: "在檢索表中，當你完成所有選擇並找到生物名稱時，這過程叫甚麼？",
+      options: ["進化 (Evolution)", "辨認 / 鑑定 (Identification)", "觀察 (Observation)", "實驗 (Experiment)"],
+      answer: "辨認 / 鑑定 (Identification)",
+      explanation: "使用檢索表的目的是辨認出未知生物的身份。"
+    },
+    {
+      id: 31,
+      question: "「呼吸作用」(Respiration) 對生物最主要的功能是什麼？",
+      options: ["吸入氧氣", "釋放能量供細胞使用", "排出身體廢物", "幫助消化食物"],
+      answer: "釋放能量供細胞使用",
+      explanation: "呼吸作用是分解食物以釋放能量的過程，不單純指「呼吸」(Breathing) 這個動作。"
+    },
+    {
+      id: 32,
+      question: "植物雖然不能像動物一樣四處走動，但它們也有「運動」表現，例如：",
+      options: ["隨風擺動", "落葉", "莖部向光生長", "果實掉落"],
+      answer: "莖部向光生長",
+      explanation: "植物的生長運動（如向光性）是它們對環境刺激作出的反應，屬於運動的一種。"
+    },
+    {
+      id: 33,
+      question: "無脊椎動物中，節肢動物（如昆蟲、蜘蛛）的身體特徵是？",
+      options: ["身體柔軟無骨", "有外骨骼和關節附肢", "有脊柱", "皮膚濕潤"],
+      answer: "有外骨骼和關節附肢",
+      explanation: "節肢動物擁有堅硬的外骨骼保護身體，以及分節的腳。"
+    },
+    {
+      id: 34,
+      question: "魚類的身體通常呈流線型，這有什麼好處？",
+      options: ["為了美觀", "減少在水中游動的阻力", "增加浮力", "容易捕食"],
+      answer: "減少在水中游動的阻力",
+      explanation: "流線型體形能有效減低水阻，讓魚類游得更快。"
+    },
+    {
+      id: 35,
+      question: "下列哪種動物屬於無脊椎動物？",
+      options: ["蛇", "蚯蚓", "青蛙", "老鼠"],
+      answer: "蚯蚓",
+      explanation: "蚯蚓體內沒有脊柱；蛇、青蛙和老鼠都是脊椎動物。"
+    },
+    {
+      id: 36,
+      question: "關於恆溫動物，下列哪項描述是正確的？",
+      options: ["體溫隨環境改變", "需要冬眠", "在寒冷環境中仍能保持體溫穩定", "不需要進食"],
+      answer: "在寒冷環境中仍能保持體溫穩定",
+      explanation: "恆溫動物（如哺乳類、鳥類）能調節體溫，受環境影響較小，因此適應力較強。"
+    },
+    {
+      id: 37,
+      question: "下列哪種植物屬於「裸子植物」(Gymnosperms)？",
+      options: ["蘇鐵", "水仙", "向日葵", "苔蘚"],
+      answer: "蘇鐵",
+      explanation: "蘇鐵和松柏一樣，種子裸露，不藏在果實內，屬於裸子植物。"
+    },
+    {
+      id: 38,
+      question: "企鵝雖然有翅膀但不會飛，它被歸類為鳥類是因為：",
+      options: ["它有喙和羽毛，並產硬殼卵", "它用肺呼吸", "它生活在陸地", "它是恆溫動物"],
+      answer: "它有喙和羽毛，並產硬殼卵",
+      explanation: "企鵝擁有鳥類的關鍵特徵：羽毛、喙及產硬殼卵。"
+    },
+    {
+      id: 39,
+      question: "下列哪種生物是用「皮膚」作為輔助呼吸器官？",
+      options: ["麻雀", "金魚", "青蛙", "狗"],
+      answer: "青蛙",
+      explanation: "兩棲類（如青蛙）的皮膚濕潤且布滿血管，能輔助肺部進行氣體交換。"
+    },
+    {
+      id: 40,
+      question: "下列哪項是爬行類動物適應陸地生活的特徵？",
+      options: ["有羽毛保暖", "有乾的鱗片防止水分流失", "用鰓呼吸", "體外受精"],
+      answer: "有乾的鱗片防止水分流失",
+      explanation: "爬行類的乾鱗片能有效減少體內水分蒸發，讓牠們能適應乾燥環境。"
+    },
+    {
+      id: 41,
+      question: "海馬生活在水中，用鰓呼吸，有鰭。牠屬於哪一類？",
+      options: ["哺乳類", "兩棲類", "魚類", "爬行類"],
+      answer: "魚類",
+      explanation: "海馬具備魚類的所有特徵（鰓、鰭、生活在水中），因此是魚類。"
+    },
+    {
+      id: 42,
+      question: "植物進行光合作用主要需要甚麼原料？",
+      options: ["氧氣和糖", "二氧化碳和水", "泥土和維生素", "氮氣和水"],
+      answer: "二氧化碳和水",
+      explanation: "植物利用光能，將二氧化碳和水轉化為養分。"
+    },
+    {
+      id: 43,
+      question: "「生殖」(Reproduction) 對生物的主要意義是？",
+      options: ["讓個體長生不老", "增加體重", "延續物種，避免滅絕", "適應環境"],
+      answer: "延續物種，避免滅絕",
+      explanation: "生殖能產生下一代，確保物種不會因個體死亡而消失。"
+    },
+    {
+      id: 44,
+      question: "草是一種有花植物嗎？",
+      options: ["是，因為它會開花結果", "不是，因為它很矮小", "不是，因為它沒有明顯花朵", "是，但它是用孢子繁殖"],
+      answer: "是，因為它會開花結果",
+      explanation: "草是有花植物，雖然花朵細小不顯眼，但它們會開花並結出穎果。"
+    },
+    {
+      id: 45,
+      question: "在製作檢索表時，我們應該避免使用哪種描述？",
+      options: ["有六條腿", "身體是綠色的", "樣子很可愛", "有翅膀"],
+      answer: "樣子很可愛",
+      explanation: "「可愛」是主觀感覺，不屬於科學上的客觀特徵，不適合用於檢索表。"
+    },
+    {
+      id: 46,
+      question: "下列哪一組全都是無脊椎動物？",
+      options: ["蝴蝶、蝸牛、海星", "老虎、獅子、貓", "鯊魚、海豚、鯨魚", "青蛙、蛇、蜥蜴"],
+      answer: "蝴蝶、蝸牛、海星",
+      explanation: "這三個選項的動物都沒有脊柱。"
+    },
+    {
+      id: 47,
+      question: "鴨嘴獸(Platypus)是哺乳類，但它有一個很特別的特徵：",
+      options: ["它有羽毛", "它是卵生的", "它沒有牙齒", "它是變溫動物"],
+      answer: "它是卵生的",
+      explanation: "鴨嘴獸是極少數「卵生」的哺乳類動物，但牠們仍會分泌乳汁哺育幼兒。"
+    },
+    {
+      id: 48,
+      question: "仙人掌的葉變成了針狀，這有助於：",
+      options: ["增加光合作用", "減少水分流失", "捕捉昆蟲", "支撐身體"],
+      answer: "減少水分流失",
+      explanation: "針狀葉減少了表面積，從而減少水分蒸發，適應沙漠環境。"
+    },
+    {
+      id: 49,
+      question: "下列哪種植物適合生長在陰暗潮濕的地方？",
+      options: ["仙人掌", "松樹", "苔蘚 (Moss)", "玫瑰"],
+      answer: "苔蘚 (Moss)",
+      explanation: "苔蘚沒有根和維管組織，吸水能力弱，必須生活在潮濕環境中。"
+    },
+    {
+      id: 50,
+      question: "鯊魚屬於哪一類動物？",
+      options: ["哺乳類", "兩棲類", "魚類", "無脊椎動物"],
+      answer: "魚類",
+      explanation: "鯊魚用鰓呼吸，有鰭，生活在水中，是魚類。"
+    },
+    {
+      id: 51,
+      question: "我們將生物分為「界、門、綱、目、科、屬、種」，哪一個層級包含的生物種類最多？",
+      options: ["種 (Species)", "科 (Family)", "界 (Kingdom)", "綱 (Class)"],
+      answer: "界 (Kingdom)",
+      explanation: "「界」是最大的分類單位，包含的生物種類最多；「種」是最小單位。"
+    },
+    {
+      id: 52,
+      question: "下列關於病毒(Virus)的說法，哪項是正確的？",
+      options: ["它是植物", "它是動物", "它在活細胞外不表現生命特徵", "它可以用肉眼看見"],
+      answer: "它在活細胞外不表現生命特徵",
+      explanation: "病毒處於生物與非生物的邊界，只有寄生在活細胞內才會表現生命活動。"
+    },
+    {
+      id: 53,
+      question: "下列哪種動物的幼體和成體樣子完全不同（變態過程）？",
+      options: ["人", "貓", "青蛙", "狗"],
+      answer: "青蛙",
+      explanation: "青蛙幼體是蝌蚪（有尾無腳，用鰓），成體是青蛙（無尾有腳，用肺），經歷變態過程。"
+    },
+    {
+      id: 54,
+      question: "在植物分類中，西瓜屬於：",
+      options: ["裸子植物", "被子植物（有花植物）", "蕨類", "苔蘚"],
+      answer: "被子植物（有花植物）",
+      explanation: "西瓜會開花，種子藏在果實內，屬於被子植物。"
+    },
+    {
+      id: 55,
+      question: "下列哪項不是爬行類的特徵？",
+      options: ["體內受精", "變溫動物", "皮膚濕潤", "產有殼卵"],
+      answer: "皮膚濕潤",
+      explanation: "爬行類的皮膚乾燥且有鱗片；皮膚濕潤是兩棲類的特徵。"
+    },
+    {
+      id: 56,
+      question: "如果一個生物不能進行光合作用，需要進食其他生物，它通常屬於：",
+      options: ["植物界", "動物界", "礦物界", "真菌界"],
+      answer: "動物界",
+      explanation: "動物的主要特徵之一是「異養」(Heterotrophic)，即不能自己製造食物，需攝取有機物。"
+    },
+    {
+      id: 57,
+      question: "蕨類植物(Ferns)葉子背面的褐色斑點是用來做什麼的？",
+      options: ["呼吸", "繁殖 (產生孢子)", "吸收陽光", "排泄廢物"],
+      answer: "繁殖 (產生孢子)",
+      explanation: "那些斑點是孢子囊群，內含孢子，用於繁殖。"
+    },
+    {
+      id: 58,
+      question: "人類屬於脊椎動物中的哪一綱？",
+      options: ["靈長綱", "哺乳綱", "人科", "脊索動物門"],
+      answer: "哺乳綱",
+      explanation: "人類具備毛髮、乳腺等特徵，屬於哺乳綱 (Mammalia)。"
+    },
+    {
+      id: 59,
+      question: "如果要製作一個分辨「貓、魚、鳥」的檢索表，第一步可以用什麼特徵？",
+      options: ["有沒有毛髮", "有沒有脊柱", "是否可愛", "是不是寵物"],
+      answer: "有沒有毛髮",
+      explanation: "「有沒有脊柱」不能分辨（三者都有）；「毛髮」可以將貓（有）與魚和鳥（無）分開；其他選項不客觀。"
+    },
+    {
+      id: 60,
+      question: "為什麼科學名詞（學名）通常用拉丁文？",
+      options: ["因為拉丁文好聽", "為了統一標準，避免語言混亂", "因為只有科學家懂拉丁文", "為了保密"],
+      answer: "為了統一標準，避免語言混亂",
+      explanation: "使用全球統一的學名可以避免因不同地區俗名不同而產生的誤會。"
+    }
+  ];
+
+  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
+  const [score, setScore] = useState(0);
+  const [showResult, setShowResult] = useState(false);
+  const [selectedOption, setSelectedOption] = useState(null);
+  const [isCorrect, setIsCorrect] = useState(null);
+  const [gameStarted, setGameStarted] = useState(false);
+  const [gameQuestions, setGameQuestions] = useState([]); // State to hold shuffled questions
+
+  // Utility to shuffle array
+  const shuffleArray = (array) => {
+    const newArray = [...array];
+    for (let i = newArray.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [newArray[i], newArray[j]] = [newArray[j], newArray[i]];
+    }
+    return newArray;
+  };
+
+  const handleStart = () => {
+    // Shuffle the questions when game starts
+    const shuffled = shuffleArray(allQuestionsSource);
+    setGameQuestions(shuffled);
+    
+    setGameStarted(true);
+    setCurrentQuestionIndex(0);
+    setScore(0);
+    setShowResult(false);
+    setSelectedOption(null);
+    setIsCorrect(null);
+  };
+
+  const handleOptionClick = (option) => {
+    if (selectedOption) return; // Prevent double clicking
+
+    // Use gameQuestions instead of allQuestionsSource
+    const currentQ = gameQuestions[currentQuestionIndex];
+    const correct = option === currentQ.answer;
+    setSelectedOption(option);
+    setIsCorrect(correct);
+
+    if (correct) {
+      setScore(score + 1);
+    }
+  };
+
+  const handleNextQuestion = () => {
+    const nextQuestion = currentQuestionIndex + 1;
+    if (nextQuestion < gameQuestions.length) {
+      setCurrentQuestionIndex(nextQuestion);
+      setSelectedOption(null);
+      setIsCorrect(null);
+    } else {
+      setShowResult(true);
+    }
+  };
+
+  // Get current question from state
+  const currentQ = gameQuestions[currentQuestionIndex];
+
+  // Colors
+  const bgGradient = "bg-gradient-to-br from-blue-50 to-indigo-100";
+  const cardBg = "bg-white";
+
+  if (!gameStarted) {
+    return (
+      <div className={`min-h-screen ${bgGradient} flex items-center justify-center p-4 font-sans`}>
+        <div className={`${cardBg} rounded-2xl shadow-xl p-8 max-w-md w-full text-center border-b-4 border-indigo-500`}>
+          <div className="bg-indigo-100 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6">
+            <BookOpen className="w-10 h-10 text-indigo-600" />
+          </div>
+          <h1 className="text-3xl font-bold text-gray-800 mb-2">科學小達人</h1>
+          <h2 className="text-xl text-indigo-600 font-medium mb-2">中一科學科問答挑戰</h2>
+          <div className="flex items-center justify-center gap-2 text-gray-500 mb-6 font-medium">
+            <User size={16} />
+            <span>製作者：傅潔瑩老師</span>
+          </div>
+          <p className="text-gray-600 mb-8 leading-relaxed">
+            挑戰你的科學知識！<br/>
+            包含生物特徵、分類及檢索表。<br/>
+            共 {allQuestionsSource.length} 題，準備好了嗎？
+          </p>
+          <button 
+            onClick={handleStart}
+            className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-4 px-6 rounded-xl transition-all transform hover:scale-105 flex items-center justify-center gap-2 shadow-lg"
+          >
+            <Play size={24} fill="currentColor" />
+            開始遊戲
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (showResult) {
+    const percentage = Math.round((score / gameQuestions.length) * 100);
+    let message = "";
+    if (percentage >= 90) message = "太厲害了！你是科學專家！🏆";
+    else if (percentage >= 70) message = "做得很好！繼續保持！🌟";
+    else if (percentage >= 50) message = "不錯，但還有進步空間！📚";
+    else message = "不要灰心，重溫一下筆記再挑戰！💪";
+
+    return (
+      <div className={`min-h-screen ${bgGradient} flex items-center justify-center p-4`}>
+        <div className={`${cardBg} rounded-2xl shadow-xl p-8 max-w-md w-full text-center border-b-4 border-indigo-500 animate-fade-in`}>
+          <Trophy className="w-24 h-24 mx-auto text-yellow-500 mb-6 drop-shadow-sm" />
+          <h2 className="text-3xl font-bold text-gray-800 mb-2">挑戰完成！</h2>
+          <div className="text-6xl font-black text-indigo-600 mb-2">{score} <span className="text-2xl text-gray-400 font-medium">/ {gameQuestions.length}</span></div>
+          <p className="text-gray-500 font-medium mb-6">答對率: {percentage}%</p>
+          <div className="bg-indigo-50 rounded-lg p-4 mb-8">
+            <p className="text-indigo-800 font-medium">{message}</p>
+          </div>
+          <button 
+            onClick={handleStart}
+            className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-6 rounded-xl transition-colors flex items-center justify-center gap-2"
+          >
+            <RefreshCcw size={20} />
+            再玩一次
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // Ensure we have a question to render
+  if (!currentQ) return null;
+
+  return (
+    <div className={`min-h-screen ${bgGradient} flex flex-col items-center justify-center p-4 md:p-6`}>
+      {/* Header / Progress */}
+      <div className="w-full max-w-2xl mb-6 flex justify-between items-center text-gray-700 font-medium">
+        <div className="flex items-center gap-2 bg-white px-4 py-2 rounded-full shadow-sm">
+          <span className="text-indigo-600 font-bold">第 {currentQuestionIndex + 1} 題</span>
+          <span className="text-gray-400">/ {gameQuestions.length}</span>
+        </div>
+        <div className="flex items-center gap-2 bg-white px-4 py-2 rounded-full shadow-sm">
+           <Trophy size={18} className="text-yellow-500" />
+           <span>得分: {score}</span>
+        </div>
+      </div>
+
+      {/* Progress Bar */}
+      <div className="w-full max-w-2xl bg-gray-200 h-2 rounded-full mb-6 overflow-hidden">
+        <div 
+          className="bg-indigo-500 h-full transition-all duration-300 ease-out"
+          style={{ width: `${((currentQuestionIndex) / gameQuestions.length) * 100}%` }}
+        ></div>
+      </div>
+
+      {/* Question Card */}
+      <div className={`${cardBg} rounded-2xl shadow-xl p-6 md:p-10 max-w-2xl w-full border-b-4 border-gray-200 relative overflow-hidden`}>
+        <h3 className="text-xl md:text-2xl font-bold text-gray-800 mb-8 leading-snug">
+          {currentQ.question}
+        </h3>
+
+        <div className="space-y-3">
+          {currentQ.options.map((option, index) => {
+            let btnClass = "w-full text-left p-4 rounded-xl border-2 transition-all font-medium text-lg relative ";
+            
+            if (selectedOption === null) {
+              // Default state
+              btnClass += "border-gray-100 bg-gray-50 hover:border-indigo-300 hover:bg-indigo-50 text-gray-700";
+            } else {
+              // Result state
+              if (option === currentQ.answer) {
+                 btnClass += "border-green-500 bg-green-50 text-green-800 shadow-md";
+              } else if (option === selectedOption && option !== currentQ.answer) {
+                 btnClass += "border-red-500 bg-red-50 text-red-800";
+              } else {
+                 btnClass += "border-gray-100 bg-gray-50 text-gray-400 opacity-50";
+              }
+            }
+
+            return (
+              <button
+                key={index}
+                onClick={() => handleOptionClick(option)}
+                disabled={selectedOption !== null}
+                className={btnClass}
+              >
+                <div className="flex justify-between items-center">
+                  <span>{option}</span>
+                  {selectedOption !== null && option === currentQ.answer && <CheckCircle className="text-green-600" />}
+                  {selectedOption === option && option !== currentQ.answer && <XCircle className="text-red-600" />}
+                </div>
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Feedback Section */}
+        {selectedOption && (
+          <div className="mt-8 pt-6 border-t border-gray-100 animate-in fade-in slide-in-from-bottom-4 duration-300">
+            <div className={`p-4 rounded-xl mb-6 ${isCorrect ? "bg-green-100 border border-green-200" : "bg-red-50 border border-red-200"}`}>
+              <div className="flex items-start gap-3">
+                {isCorrect ? (
+                  <CheckCircle className="w-6 h-6 text-green-600 flex-shrink-0 mt-0.5" />
+                ) : (
+                  <XCircle className="w-6 h-6 text-red-600 flex-shrink-0 mt-0.5" />
+                )}
+                <div>
+                  <h4 className={`font-bold mb-1 ${isCorrect ? "text-green-800" : "text-red-800"}`}>
+                    {isCorrect ? "答對了！" : "答錯了！"}
+                  </h4>
+                  {!isCorrect && (
+                    <p className="text-red-700 mb-2">
+                      正確答案是：<span className="font-bold">{currentQ.answer}</span>
+                    </p>
+                  )}
+                  <p className="text-gray-700 text-sm leading-relaxed bg-white/50 p-2 rounded-lg">
+                    💡 <strong>解說：</strong>{currentQ.explanation}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <button
+              onClick={handleNextQuestion}
+              className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-4 px-6 rounded-xl transition-all shadow-lg hover:shadow-xl flex items-center justify-center gap-2"
+            >
+              {currentQuestionIndex < gameQuestions.length - 1 ? "下一題" : "查看成績"}
+              <ArrowRight size={20} />
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+export default QuizApp;
